@@ -1,0 +1,1037 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+/* ---------- ADVENTURE EXPLORATION ---------- */
+#s-explore{gap:12px}
+.explore-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.explore-hud{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-family:var(--font-m);font-size:12px;color:#eaf4e6}
+.explore-world{position:relative;overflow:hidden;border:2px solid #54734e;border-radius:16px;background:#182d25;box-shadow:0 14px 40px #0008}
+#worldCanvas{display:block;width:100%;height:auto;aspect-ratio:16/9;image-rendering:pixelated}
+.world-tip{position:absolute;left:12px;top:12px;padding:7px 10px;border-radius:8px;background:#102018cc;color:#efffe7;font-size:12px;border:1px solid #b4d69a66}
+.world-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.dpad{display:grid;grid-template-columns:48px 48px 48px;grid-template-rows:42px 42px;gap:5px}
+.dpad button{border:1px solid #8ba879;background:#243e30;color:white;border-radius:9px;font-size:19px;touch-action:none}
+.dpad button:active{background:#50794a}
+.dpad .up{grid-column:2}.dpad .left{grid-column:1;grid-row:2}.dpad .down{grid-column:2;grid-row:2}.dpad .right{grid-column:3;grid-row:2}
+.explore-instruction{color:var(--mute);font-size:13px}
+.boss-skill{font:700 11px var(--font-m);letter-spacing:.04em;color:#ff8b9b;padding:5px 9px;border:1px solid #a93651;border-radius:8px;background:#35101dcc}
+#worldCanvas{background:#080812}
+
+@media(max-width:560px){#worldCanvas{aspect-ratio:4/3}.world-tip{font-size:10px;max-width:75%}}
+
+.combat-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.enemy-hud{display:flex;align-items:center;gap:8px;font:700 11px var(--font-m);color:#ffb8c0;letter-spacing:.08em}
+.enemy-track{display:inline-block;width:120px;height:9px;background:#34202a;border-radius:20px;overflow:hidden;border:1px solid #8c4b5b}
+.enemy-track i{display:block;width:100%;height:100%;background:linear-gradient(90deg,#ff5368,#ff9a62);transition:width .15s}
+.attack-btn{background:linear-gradient(135deg,#ff6a55,#c9284b)!important;border:1px solid #ffb0a2!important;box-shadow:0 5px 0 #79243b,0 10px 22px #e63d5544;font-weight:800;letter-spacing:.04em}
+.attack-btn:active{transform:translateY(3px);box-shadow:0 2px 0 #79243b}
+.attack-btn small{color:#ffe0d9;font-size:10px}
+.explore-world{border:2px solid #8ebc7d;border-radius:20px;box-shadow:0 18px 50px #0009,0 0 0 5px #ffffff08}
+.world-tip{background:#102018dd;backdrop-filter:blur(8px);box-shadow:0 4px 18px #0005}
+.dpad button{width:50px;height:46px;background:linear-gradient(145deg,#355a43,#1b3428);border:1px solid #a5c58a;box-shadow:inset 0 1px #ffffff22,0 4px 10px #0005}
+#s-explore .explore-top h2{font-size:clamp(22px,4vw,30px);color:#f1ffd9;text-shadow:0 2px 16px #a8d56b55}
+#s-explore .explore-hud{margin-top:8px}
+</style></head><body>
+<title>Informatika Arena</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: satu kolom tengah, layar bergantian (beranda, hero, menu, peta, duel, hasil). Tema gelap tunggal ala terminal. */
+:root{
+  color-scheme:dark;
+  --bg:#0a0f1f; --panel:#121a33; --panel2:#18224a; --line:#27325f;
+  --fg:#e9edff; --mute:#93a0cf;
+  --cyan:#37d6ff; --gold:#ffbd45; --red:#ff5c72; --green:#46e6a1; --violet:#9d7bff;
+  --font-d:'Chakra Petch',system-ui,sans-serif;
+  --font-b:'Inter',system-ui,sans-serif;
+  --font-m:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{
+  background-color:var(--bg);
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:44px 44px;background-position:-1px -1px;
+  color:var(--fg);font-family:var(--font-b);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:18px 48px;min-height:100%;
+}
+body::before{content:"";position:fixed;inset:0;background:radial-gradient(900px 500px at 50% -10%,rgba(55,214,255,.10),transparent 70%),linear-gradient(180deg,transparent 40%,var(--bg) 100%);pointer-events:none;z-index:0}
+#app{position:relative;z-index:1;max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--font-d);margin:0;text-wrap:balance;line-height:1.15}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+small{color:var(--mute)}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.logo{font-family:var(--font-d);font-weight:700;letter-spacing:.14em;font-size:14px}
+.logo span{color:var(--cyan);margin-left:.5em}
+#who{display:flex;align-items:center;gap:10px;font-family:var(--font-m);font-size:12px;color:var(--mute)}
+.screen{display:flex;flex-direction:column;gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+.btn{background:var(--cyan);color:#06101f;border:0;border-radius:8px;padding:12px 18px;font-family:var(--font-d);font-weight:700;font-size:16px;letter-spacing:.03em}
+.btn:hover:not(:disabled){filter:brightness(1.1)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+.btn.ghost:hover:not(:disabled){border-color:var(--cyan)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.row>*{min-width:0}
+input[type=text]{background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--fg);padding:12px 14px;font:inherit;font-size:16px;min-width:0;flex:1}
+label{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.1em}
+
+/* hero home */
+.hero-home{padding:28px 0 8px;display:flex;flex-direction:column;gap:14px}
+.hero-home h1{font-size:clamp(32px,7vw,58px);letter-spacing:-.01em}
+.hero-home h1 em{font-style:normal;color:var(--cyan)}
+.bin{font-family:var(--font-m);font-size:12px;color:var(--cyan);letter-spacing:.12em;opacity:.8;word-break:break-all}
+.hero-home p{max-width:52ch;color:var(--mute);margin:0}
+
+/* badge */
+.badge{--c:#fff;--s:56px;width:var(--s);height:var(--s);flex:none;display:grid;place-items:center;
+  background:linear-gradient(160deg,var(--c),color-mix(in srgb,var(--c) 50%,#000));color:#06101f;
+  font-family:var(--font-m);font-weight:700;font-size:calc(var(--s)*.34);
+  clip-path:polygon(25% 4%,75% 4%,100% 50%,75% 96%,25% 96%,0 50%)}
+.badge.sq{clip-path:polygon(10% 0,100% 0,100% 90%,90% 100%,0 100%,0 10%)}
+
+/* hero select */
+.hgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.hcard{--c:#fff;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.hcard b{font-family:var(--font-d);font-size:16px}
+.hcard[aria-pressed=true]{border-color:var(--c);background:color-mix(in srgb,var(--c) 14%,var(--panel));box-shadow:0 0 0 1px var(--c)}
+.hdetail{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start}
+.hdetail h2{font-size:26px}
+.stat{display:grid;grid-template-columns:38px 1fr 34px;gap:8px;align-items:center;font-family:var(--font-m);font-size:12px;color:var(--mute)}
+.skillbox{margin-top:10px;border-left:3px solid var(--gold);padding-left:12px}
+.skillbox b{font-family:var(--font-d);color:var(--gold)}
+@media(max-width:520px){.hdetail{grid-template-columns:1fr}}
+
+/* bars */
+.bar{height:9px;background:var(--bg);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--green);transition:width .35s}
+.bar.red i{background:var(--red)}
+.bar.gold i{background:var(--gold)}
+.bar.cyan i{background:var(--cyan)}
+
+/* menu */
+.modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.mode{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:8px}
+.mode:hover{border-color:var(--cyan)}
+.mode h3{font-size:24px}
+.mode p{margin:0;color:var(--mute)}
+.mode .tag{font-family:var(--font-m);font-size:11px;letter-spacing:.12em;color:var(--cyan)}
+
+/* stages */
+.stage{--c:#fff;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.stage:hover:not(:disabled){border-color:var(--c)}
+.stage:disabled{opacity:.45;cursor:not-allowed}
+.stage b{font-family:var(--font-d);font-size:17px;display:block}
+.stars{color:var(--gold);letter-spacing:.1em;white-space:nowrap}
+
+/* battle */
+.duel{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center}
+.vs{font-family:var(--font-d);font-weight:700;color:var(--mute);letter-spacing:.1em}
+.fighter{display:flex;gap:10px;align-items:center;min-width:0}
+.fi{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.fn{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.fn b{font-family:var(--font-d);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fn span{font-size:11px;color:var(--mute);font-family:var(--font-m)}
+@media(max-width:560px){.duel{grid-template-columns:1fr}.vs{display:none}}
+.opps{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+.opp{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;text-align:left;--c:#fff}
+.opp.targeted{border-color:var(--red);box-shadow:0 0 0 1px var(--red)}
+.opp.out{opacity:.4}
+.arena-head{display:flex;flex-direction:column;gap:10px}
+.qcard{display:flex;flex-direction:column;gap:12px}
+.qmeta{display:flex;justify-content:space-between;font-family:var(--font-m);font-size:12px;color:var(--mute)}
+.timer{height:6px;background:var(--bg);border-radius:4px;overflow:hidden}
+.timer i{display:block;height:100%;width:100%;background:var(--cyan)}
+.q{font-size:clamp(19px,3.6vw,25px)}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:620px){.opts{grid-template-columns:1fr}}
+.opt{display:flex;gap:12px;align-items:center;text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px}
+.opt b{font-family:var(--font-m);color:var(--cyan);width:22px;flex:none}
+.opt:hover:not(:disabled){border-color:var(--cyan)}
+.opt:disabled{cursor:default}
+.opt.ok{border-color:var(--green);background:color-mix(in srgb,var(--green) 18%,var(--panel2))}
+.opt.bad{border-color:var(--red);background:color-mix(in srgb,var(--red) 18%,var(--panel2))}
+.opt.gone{opacity:.25;text-decoration:line-through}
+.bfoot{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.skill{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--gold);border-radius:10px;padding:10px 14px;text-align:left}
+.skill:disabled{border-color:var(--line);opacity:.6;cursor:not-allowed}
+.skill:not(:disabled){background:color-mix(in srgb,var(--gold) 16%,var(--panel));box-shadow:0 0 14px rgba(255,189,69,.3)}
+.skill b{font-family:var(--font-d);color:var(--gold);display:block}
+.pips{display:flex;gap:4px}
+.pips i{width:12px;height:12px;border:1px solid var(--gold);border-radius:2px}
+.pips i.on{background:var(--gold)}
+.msg{flex:1;min-width:180px;font-family:var(--font-m);font-size:13px;color:var(--mute)}
+.streak{font-family:var(--font-m);font-size:12px;color:var(--gold)}
+.note{text-align:center;color:var(--mute)}
+
+/* lobby + result */
+.code{font-family:var(--font-m);font-size:42px;letter-spacing:.3em;color:var(--cyan);font-weight:700}
+.plist{display:flex;flex-direction:column;gap:8px}
+.pl{display:flex;align-items:center;gap:12px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 12px}
+.pl b{font-family:var(--font-d)}
+.rank{font-family:var(--font-d);font-weight:700;font-size:20px;width:28px;color:var(--gold)}
+.big{font-size:clamp(30px,6vw,46px)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:max(20px,env(safe-area-inset-bottom,0px));background:var(--panel2);border:1px solid var(--cyan);padding:10px 16px;border-radius:8px;z-index:20;max-width:90vw;font-size:14px}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div id="app">
+  <header class="top"><b class="logo">INFORMATIKA<span>ARENA</span></b><div id="who"></div></header>
+
+  <section class="screen" id="s-home">
+    <div class="hero-home">
+      <div class="bin" aria-hidden="true">01001001 01001110 01000110</div>
+      <h1>Pilih hero. Kalahkan bug. <em>Menangkan arena.</em></h1>
+      <p>Jawab soal informatika untuk menyerang musuh. Tamatkan enam dunia petualangan, lalu tantang teman sekelas di arena online.</p>
+    </div>
+    <div class="card">
+      <label for="nick">Nama pemain</label>
+      <div class="row" style="margin-top:8px">
+        <input type="text" id="nick" maxlength="14" placeholder="Contoh: Rina" autocomplete="off">
+        <button class="btn" data-a="start">Mulai Main</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="s-heroes" hidden>
+    <h2>Pilih Hero</h2>
+    <div class="hgrid" id="hgrid"></div>
+    <div class="card hdetail" id="hdetail"></div>
+    <div class="row"><button class="btn" data-a="confirmHero">Pilih Hero Ini</button><button class="btn ghost" data-a="toMenuIfHero" id="hback" hidden>Batal</button></div>
+  </section>
+
+  <section class="screen" id="s-menu" hidden>
+    <div class="card" id="profile"></div>
+    <div class="modes">
+      <button class="mode" data-a="toMap"><span class="tag">SOLO · 6 DUNIA</span><h3>Petualangan</h3><p>Lawan monster di tiap dunia, dari perangkat komputer sampai Raja Virus di Istana Kode. Kumpulkan bintang.</p></button>
+      <button class="mode" data-a="toArena"><span class="tag">ONLINE · 2 SAMPAI 6 PEMAIN</span><h3>Arena</h3><p>Buat ruang, bagikan kodenya, lalu adu cepat dan tepat menjawab. Yang terakhir bertahan menang.</p></button>
+    </div>
+    <div class="row"><button class="btn ghost" data-a="changeHero">Ganti Hero</button><button class="btn ghost" data-a="home">Ganti Nama</button></div>
+  </section>
+
+  <section class="screen" id="s-map" hidden>
+    <div class="row" style="justify-content:space-between"><h2>Peta Petualangan</h2><button class="btn ghost" data-a="toMenu">Kembali</button></div>
+    <div class="plist" id="stages"></div>
+  </section>
+
+
+  <section class="screen" id="s-explore" hidden>
+    <div class="explore-top">
+      <div><h2 id="worldTitle">Petualangan</h2><div class="explore-hud"><span id="worldStage">DUNIA 1</span><span>❤ <b id="worldHp">100</b> HP</span><span id="worldGoal">Temukan monster!</span><span id="worldBossSkill" class="boss-skill">☠ JURUS BOSS: SIAGA</span></div></div>
+      <button class="btn ghost" data-a="exitExplore">Keluar</button>
+    </div>
+    <div class="explore-world">
+      <canvas id="worldCanvas" width="960" height="540" aria-label="Area petualangan 2D"></canvas>
+      <div class="world-tip">WASD / panah bergerak · SPACE serang · E jurus spesial hero</div>
+    </div>
+    <div class="world-controls">
+      <div class="dpad" aria-label="Kontrol arah">
+        <button class="up" data-move="up" aria-label="Atas">▲</button>
+        <button class="left" data-move="left" aria-label="Kiri">◀</button>
+        <button class="down" data-move="down" aria-label="Bawah">▼</button>
+        <button class="right" data-move="right" aria-label="Kanan">▶</button>
+      </div>
+      <div class="explore-instruction" id="exploreHint">Jelajahi area, dekati monster, lalu serang!</div>
+      <div class="combat-controls">
+        <div class="enemy-hud">MUSUH <b id="worldEnemyHp">—</b> HP <span class="enemy-track"><i id="worldEnemyBar"></i></span></div>
+        <button class="btn attack-btn" data-a="attackWorld">⚔ SERANG <small>(SPACE)</small></button>
+        <button class="btn skill" id="worldSkillBtn" data-a="worldSkill">✨ JURUS HERO <small>(E)</small></button>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="s-arena" hidden>
+    <div class="row" style="justify-content:space-between"><h2>Arena</h2><button class="btn ghost" data-a="toMenu">Kembali</button></div>
+    <div class="card" style="display:flex;flex-direction:column;gap:14px">
+      <div><b style="font-family:var(--font-d);font-size:18px">Buat ruang baru</b><p style="margin:4px 0 10px;color:var(--mute)">Kamu mendapat kode 4 huruf. Bagikan ke teman agar bisa masuk.</p><button class="btn" data-a="createRoom" id="bcreate">Buat Ruang</button></div>
+      <hr style="border:0;border-top:1px solid var(--line);width:100%">
+      <div><b style="font-family:var(--font-d);font-size:18px">Gabung ruang</b>
+        <div class="row" style="margin-top:8px"><input type="text" id="joincode" maxlength="4" placeholder="KODE" style="text-transform:uppercase;letter-spacing:.3em;font-family:var(--font-m)" autocomplete="off"><button class="btn" data-a="joinRoom" id="bjoin">Gabung</button></div></div>
+      <p id="roomnote" style="margin:0;color:var(--mute)" hidden>Multiplayer online memerlukan layanan room realtime yang terhubung. Jika belum tersedia, gunakan mode latihan vs Bot.</p>
+      <hr style="border:0;border-top:1px solid var(--line);width:100%">
+      <div><b style="font-family:var(--font-d);font-size:18px">Latihan vs Bot</b><p style="margin:4px 0 10px;color:var(--mute)">Duel 10 soal melawan lawan komputer. Cocok untuk mencoba hero.</p><button class="btn ghost" data-a="startBot">Lawan Bot</button></div>
+    </div>
+  </section>
+
+  <section class="screen" id="s-lobby" hidden>
+    <div class="card" style="text-align:center"><small>KODE RUANG</small><div class="code" id="lcode"></div><div class="row" style="justify-content:center"><button class="btn ghost" data-a="copyCode">Salin Kode</button></div></div>
+    <div class="card"><b style="font-family:var(--font-d)">Pemain di ruang</b><div class="plist" id="lplayers" style="margin-top:10px"></div></div>
+    <div class="row"><button class="btn" data-a="hostStart" id="bhost" hidden>Mulai Pertandingan</button><button class="btn ghost" data-a="leaveRoom">Keluar Ruang</button></div>
+    <p class="note" id="lnote" style="margin:0"></p>
+  </section>
+
+  <section class="screen" id="s-battle" hidden><div id="battle" style="display:flex;flex-direction:column;gap:14px"></div></section>
+
+  <section class="screen" id="s-result" hidden></section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(()=>{
+'use strict';
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function load(){try{return JSON.parse(localStorage.getItem('ia-save'))}catch(e){return null}}
+function persist(){try{localStorage.setItem('ia-save',JSON.stringify(S))}catch(e){}}
+function hashStr(s){let h=1779033703^s.length;for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}return h>>>0}
+function rng(seed){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function shuffle(arr,r=Math.random){const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+/* ---------- DATA ---------- */
+const HEROES=[
+ {id:'kodra',name:'Kodra',role:'Fighter',g:'</>',c:'#37d6ff',hp:100,atk:14,sk:'Debug Slash',sd:'Serangan jawaban benar berikutnya menjadi 2× lipat.'},
+ {id:'bita',name:'Bita',role:'Mage',g:'01',c:'#9d7bff',hp:90,atk:13,sk:'Konversi Biner',sd:'Menghapus dua pilihan jawaban yang salah.'},
+ {id:'neta',name:'Neta',role:'Support',g:'@',c:'#46e6a1',hp:100,atk:11,sk:'Restore Backup',sd:'Memulihkan 30 HP.'},
+ {id:'dara',name:'Dara',role:'Tank',g:'[#]',c:'#ffbd45',hp:130,atk:10,sk:'Firewall',sd:'Menahan serangan berikutnya (di Arena: tambahan 35 HP).'},
+ {id:'algo',name:'Algo',role:'Assassin',g:'if',c:'#ff5c72',hp:85,atk:16,sk:'Loop Combo',sd:'Dua jawaban benar berikutnya mendapat damage 1,5×.'},
+ {id:'sandi',name:'Sandi',role:'Marksman',g:'{*}',c:'#ff7ad9',hp:95,atk:13,sk:'Enkripsi Waktu',sd:'Menambah 10 detik untuk soal yang sedang berjalan.'}
+];
+const heroById=id=>HEROES.find(h=>h.id===id)||HEROES[0];
+const TOPICS=['Perangkat Komputer','Biner & Data','Algoritma','Jaringan & Internet','Keamanan Digital','Pemrograman & Logika'];
+/* [topik, soal, [benar, salah, salah, salah]] */
+const BANK=[
+ [0,'Bagian komputer yang disebut "otak" karena memproses instruksi adalah...',['CPU','RAM','Monitor','Keyboard']],
+ [0,'Perangkat yang termasuk perangkat input adalah...',['Keyboard','Printer','Speaker','Monitor']],
+ [0,'Memori yang isinya hilang saat komputer dimatikan adalah...',['RAM','Hard disk','SSD','Flash disk']],
+ [0,'Fungsi utama sistem operasi adalah...',['Mengelola perangkat keras dan menjalankan aplikasi','Menghubungkan listrik ke komputer','Menggantikan fungsi monitor','Mencetak dokumen otomatis']],
+ [0,'Berikut ini yang merupakan sistem operasi adalah...',['Linux','Chrome','Photoshop','Excel']],
+ [0,'1 kilobyte (KB) sama dengan...',['1.024 byte','100 byte','8 byte','1 juta byte']],
+ [0,'Perangkat lunak untuk menjelajah halaman web disebut...',['Browser','Compiler','Antivirus','Driver']],
+ [1,'Sistem bilangan yang hanya memakai angka 0 dan 1 adalah...',['Biner','Desimal','Oktal','Heksadesimal']],
+ [1,'Bilangan biner 101 sama dengan desimal...',['5','3','6','7']],
+ [1,'Bilangan desimal 6 ditulis dalam biner menjadi...',['110','101','011','111']],
+ [1,'1 byte terdiri atas berapa bit?',['8','4','2','16']],
+ [1,'Bilangan biner 1000 sama dengan desimal...',['8','4','10','16']],
+ [1,'Kode yang memberi angka pada huruf dan simbol, misalnya "A" = 65, adalah...',['ASCII','HTML','JPEG','MP3']],
+ [1,'Ekstensi file berikut yang berisi gambar adalah...',['.jpg','.mp3','.docx','.exe']],
+ [2,'Urutan langkah logis untuk menyelesaikan masalah disebut...',['Algoritma','Virus','Server','Cache']],
+ [2,'Bagan yang menggambarkan algoritma dengan simbol dan panah disebut...',['Flowchart','Spreadsheet','Slide','Kalender']],
+ [2,'Simbol belah ketupat pada flowchart dipakai untuk...',['Percabangan atau keputusan','Awal program','Input data','Cetak hasil']],
+ [2,'Mengulang langkah sampai syarat terpenuhi disebut...',['Perulangan','Percabangan','Variabel','Komentar']],
+ [2,'Algoritma mencari angka terbesar dari 5, 9, 2, 7 menghasilkan...',['9','5','7','2']],
+ [2,'Urutan naik dari 8, 3, 6, 1 adalah...',['1, 3, 6, 8','8, 6, 3, 1','3, 1, 6, 8','1, 6, 3, 8']],
+ [2,'Ciri algoritma yang baik adalah...',['Langkahnya jelas dan pasti berakhir','Langkahnya tak terbatas','Hasilnya selalu berubah-ubah','Hanya dipahami pembuatnya']],
+ [3,'Alamat unik sebuah perangkat dalam jaringan adalah...',['IP address','Password','Username','Bookmark']],
+ [3,'WWW adalah singkatan dari...',['World Wide Web','World Web Window','Wide World Wire','Web World Wide']],
+ [3,'Perangkat yang membagikan sinyal Wi-Fi di rumah adalah...',['Router','Printer','Scanner','Webcam']],
+ [3,'Protokol untuk membuka halaman web secara aman adalah...',['HTTPS','HTML','CSS','USB']],
+ [3,'Layanan yang mengubah nama domain menjadi alamat IP adalah...',['DNS','VPN','RAM','GPU']],
+ [3,'Jaringan yang mencakup satu gedung atau sekolah disebut...',['LAN','WAN','ROM','GUI']],
+ [3,'Alamat email diawali nama pengguna, lalu simbol...',['@','#','&','%']],
+ [4,'Kata sandi yang paling kuat adalah...',['Kombinasi huruf besar, huruf kecil, angka, dan simbol yang panjang','Tanggal lahir','12345678','Nama sendiri']],
+ [4,'Pesan palsu yang menipu agar kita memberikan data pribadi disebut...',['Phishing','Streaming','Booting','Scrolling']],
+ [4,'Program berbahaya yang merusak data dan bisa menyebar disebut...',['Malware','Firmware','Hardware','Plugin']],
+ [4,'Autentikasi dua langkah (2FA) berguna untuk...',['Menambah lapisan keamanan akun','Mempercepat internet','Menghemat baterai','Menghapus virus']],
+ [4,'Menerima tautan mencurigakan dari orang asing, sebaiknya...',['Tidak mengkliknya dan melaporkannya','Langsung mengklik','Membagikannya ke teman','Memberikan password']],
+ [4,'Salinan data cadangan disebut...',['Backup','Format','Install','Cookie']],
+ [4,'Menyebarkan berita bohong di internet disebut...',['Hoaks','Podcast','Vlog','Gadget']],
+ [5,'Tempat menyimpan nilai yang bisa berubah dalam program disebut...',['Variabel','Monitor','Router','Folder']],
+ [5,'Gerbang logika AND bernilai 1 jika...',['Kedua input bernilai 1','Salah satu input bernilai 1','Kedua input bernilai 0','Kedua input berbeda']],
+ [5,'Hasil NOT 1 adalah...',['0','1','2','11']],
+ [5,'Perintah Python untuk menampilkan teks ke layar adalah...',['print()','input()','len()','range()']],
+ [5,'Jika x = 3 lalu x = x + 2, nilai x sekarang adalah...',['5','3','2','32']],
+ [5,'Kesalahan pada program disebut...',['Bug','Plug','Chip','Mouse']],
+ [5,'Hasil operasi OR antara 0 dan 1 adalah...',['1','0','2','01']]
+];
+const STAGES=[
+ {name:'Hutan Perangkat',topic:0,e:{n:'Bug Kecil',g:'bug',hp:60,atk:12,c:'#ff7a59'}},
+ {name:'Gua Biner',topic:1,e:{n:'Golem 0-1',g:'01',hp:75,atk:13,c:'#9d7bff'}},
+ {name:'Kota Algoritma',topic:2,e:{n:'Loop Tak Berujung',g:'∞',hp:85,atk:14,c:'#37d6ff'}},
+ {name:'Pelabuhan Jaringan',topic:3,e:{n:'Kraken Packet',g:'404',hp:95,atk:15,c:'#46e6a1'}},
+ {name:'Benteng Keamanan',topic:4,e:{n:'Phisher Bayangan',g:'@!',hp:105,atk:16,c:'#ffbd45'}},
+ {name:'Istana Kode',topic:-1,e:{n:'Raja Virus',g:'X',hp:150,atk:18,c:'#ff5c72'}}
+];
+const BOTS=['Bot Nusantara','Bot Garuda','Bot Komodo','Bot Rinjani'];
+
+/* ---------- STATE ---------- */
+let S=Object.assign({name:'',hero:null,xp:0,stars:[0,0,0,0,0,0]},load()||{});
+if(!Array.isArray(S.stars)||S.stars.length!==6)S.stars=[0,0,0,0,0,0];
+let B=null,timer=null,roomNs=null;
+const R={room:null,off:null,code:'',state:'idle',last:null};
+const lvl=()=>Math.floor(S.xp/100)+1;
+
+/* ---------- UI HELPERS ---------- */
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.hidden=s.id!==id);window.scrollTo(0,0);header()}
+function header(){
+  const w=$('#who');
+  if(!S.hero){w.innerHTML='';return}
+  const h=heroById(S.hero);
+  w.innerHTML=badge(h,28)+`<span>Lv ${lvl()} · ${esc(S.name)}</span>`;
+}
+let toastT=null;
+function toast(t){const e=$('#toast');e.textContent=t;e.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>e.hidden=true,2800)}
+const badge=(h,s)=>`<span class="badge" style="--c:${h.c};--s:${s}px">${esc(h.g)}</span>`;
+const bar=(v,m,cls)=>`<div class="bar ${cls||''}"><i style="width:${Math.max(0,Math.min(100,v/m*100))}%"></i></div>`;
+const starsTxt=n=>'★'.repeat(n)+'☆'.repeat(3-n);
+
+/* ---------- SCREENS ---------- */
+function renderHeroes(){
+  const sel=heroById(S.pick||S.hero||HEROES[0].id);S.pick=sel.id;
+  $('#hgrid').innerHTML=HEROES.map(h=>`<button class="hcard" data-a="pick" data-id="${h.id}" aria-pressed="${h.id===sel.id}" style="--c:${h.c}">${badge(h,52)}<b>${h.name}</b><small>${h.role}</small></button>`).join('');
+  $('#hdetail').innerHTML=`${badge(sel,84)}<div><h2>${sel.name} <small style="font-size:14px;font-family:var(--font-m)">${sel.role}</small></h2>
+   <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
+   <div class="stat"><span>HP</span>${bar(sel.hp,140,'')}<span>${sel.hp}</span></div>
+   <div class="stat"><span>ATK</span>${bar(sel.atk,18,'red')}<span>${sel.atk}</span></div></div>
+   <div class="skillbox"><b>${sel.sk}</b><br><span style="color:var(--mute)">${sel.sd}</span></div></div>`;
+  $('#hback').hidden=!S.hero;
+}
+function renderMenu(){
+  const h=heroById(S.hero);
+  $('#profile').innerHTML=`<div class="row" style="gap:16px">${badge(h,64)}<div style="flex:1;min-width:180px"><h2>Halo, ${esc(S.name)}</h2><small>${h.name} · ${h.role} · Level ${lvl()}</small>${bar(S.xp%100,100,'cyan')}<small>${S.xp%100}/100 XP menuju level ${lvl()+1}</small></div></div>`;
+}
+function renderMap(){
+  $('#stages').innerHTML=STAGES.map((st,i)=>{
+    const open=i===0||S.stars[i-1]>0;
+    return `<button class="stage" data-a="stage" data-i="${i}" ${open?'':'disabled'} style="--c:${st.e.c}"><span class="badge sq" style="--c:${st.e.c};--s:54px">${esc(st.e.g)}</span><div><b>${i+1}. ${st.name}</b><small>${st.topic<0?'Semua materi · Boss':TOPICS[st.topic]} · lawan ${st.e.n}</small></div><span class="stars">${open?starsTxt(S.stars[i]):'terkunci'}</span></button>`;
+  }).join('');
+}
+function showResult(o){
+  const el=$('#s-result');
+  el.innerHTML=`<div class="card" style="text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center">
+    <small style="font-family:var(--font-m);letter-spacing:.14em">${o.tag}</small>
+    <h2 class="big" style="color:${o.win?'var(--green)':'var(--red)'}">${o.title}</h2>
+    ${o.stars!=null?`<div class="stars big" style="font-size:34px">${starsTxt(o.stars)}</div>`:''}
+    <p style="margin:0;color:var(--mute)">${o.sub}</p>
+    ${o.rows||''}
+    <div class="row" style="justify-content:center">${o.btns}</div></div>`;
+  show('s-result');
+}
+function gainXp(n){S.xp+=n;persist();header()}
+
+/* ---------- BATTLE CORE ---------- */
+function prep(q,r){return{topic:q[0],t:q[1],opts:shuffle(q[2].map((t,k)=>({txt:t,ok:k===0})),r)}}
+function stopTimer(){clearInterval(timer);timer=null}
+function startTimer(){
+  stopTimer();
+  timer=setInterval(()=>{
+    if(!B||B.locked||B.over||B.done||B.dead){stopTimer();return}
+    B.tleft-=100;timerUI();
+    if(B.tleft<=0)answer(-1);
+  },100);
+}
+function timerUI(){
+  const b=$('#tbar'),s=$('#tsec');
+  if(b&&B)b.style.width=Math.max(0,B.tleft/B.tmax*100)+'%';
+  if(s&&B)s.textContent=Math.max(0,Math.ceil(B.tleft/1000))+' dtk';
+}
+function nextQ(){
+  if(!B||B.over)return;
+  if(B.mode==='adv'){
+    if(!B.pool.length)B.pool=shuffle(B.src);
+    B.q=prep(B.pool.pop());
+    B.tmax=20000;
+  }else{
+    if(B.i>=B.qs.length){B.done=true;sync();renderBattle();arenaCheck();return}
+    B.q=B.qs[B.i];B.tmax=15000;
+  }
+  B.locked=false;B.chosen=-1;B.tleft=B.tmax;
+  renderBattle();startTimer();
+}
+function hitDmg(){
+  let d=B.hero.atk+Math.min(B.streak,5)*2;
+  if(B.x2){d*=2;B.x2=false}else if(B.loop>0){d=Math.round(d*1.5);B.loop--}
+  return d;
+}
+function answer(idx){
+  if(!B||B.locked||B.over||B.done||B.dead)return;
+  B.locked=true;stopTimer();B.chosen=idx;
+  const ok=idx>=0&&B.q.opts[idx].ok;
+  if(B.mode==='adv')advResolve(ok);else arenaResolve(ok);
+}
+function useSkill(){
+  if(!B||B.charge<3||B.locked||B.over||B.done||B.dead)return;
+  const id=B.hero.id;B.charge=0;
+  if(id==='kodra'){B.x2=true;B.msg='Debug Slash siap: serangan berikutnya 2×.'}
+  else if(id==='bita'){
+    const wrong=B.q.opts.map((o,k)=>({o,k})).filter(x=>!x.o.ok&&!x.o.gone);
+    shuffle(wrong).slice(0,2).forEach(x=>x.o.gone=true);B.msg='Dua jawaban salah dihapus.';
+  }else if(id==='neta'){
+    if(B.mode==='adv')B.hp=Math.min(B.maxHp,B.hp+30);else{B.bonus+=30;sync()}
+    B.msg='Restore Backup: +30 HP.';
+  }else if(id==='dara'){
+    if(B.mode==='adv')B.shield=true;else{B.bonus+=35;sync()}
+    B.msg=B.mode==='adv'?'Firewall aktif: serangan berikutnya ditahan.':'Firewall: +35 HP.';
+  }else if(id==='algo'){B.loop=2;B.msg='Loop Combo: dua serangan berikutnya 1,5×.'}
+  else if(id==='sandi'){B.tleft+=10000;B.tmax=Math.max(B.tmax,B.tleft);B.msg='Waktu ditambah 10 detik.'}
+  renderBattle();
+  if(B.mode!=='adv')arenaCheck();
+}
+
+/* ---------- ADVENTURE ---------- */
+function startAdv(i){
+  const st=STAGES[i],hero=heroById(S.hero);
+  const src=st.topic<0?BANK:BANK.filter(q=>q[0]===st.topic);
+  B={mode:'adv',stage:i,i:0,hero,hp:hero.hp,maxHp:hero.hp,e:{...st.e,cur:st.e.hp,max:st.e.hp},
+     streak:0,charge:0,x2:false,loop:0,shield:false,pool:shuffle(src),src,locked:false,chosen:-1,
+     msg:'Jawab dengan benar untuk menyerang.',tmax:20000,tleft:20000,over:false};
+  show('s-battle');nextQ();
+}
+function advResolve(ok){
+  const b=B;
+  if(B.postFight){
+    if(ok){B.streak++;B.charge=Math.min(3,B.charge+1);B.postFightCorrect=(B.postFightCorrect||0)+1;const heal=Math.max(8,Math.round(B.maxHp*.12));const before=B.hp;B.hp=Math.min(B.maxHp,B.hp+heal);const restored=B.hp-before;B.msg=`Benar! +${restored} HP. Jawaban ${B.postFightCorrect}/${B.postFightTotal}.`;}
+    else{
+      B.streak=0;
+      if(B.shield){B.shield=false;B.msg='Firewall menahan hukuman.'}
+      else{B.hp=Math.max(0,B.hp-B.e.atk);B.msg=(B.chosen<0?'Waktu habis. ':'Jawaban salah. ')+`- ${B.e.atk} HP.`}
+    }
+    renderBattle();
+    setTimeout(()=>{if(B!==b||B.over)return;if(B.postFightCorrect>=B.postFightTotal)return advEnd(true);if(B.hp<=0)return advEnd(false);B.i++;nextQ();},1200);
+    return;
+  }
+  if(ok){
+    B.streak++;B.charge=Math.min(3,B.charge+1);
+    const d=hitDmg();B.e.cur=Math.max(0,B.e.cur-d);
+    B.msg=`Benar. ${B.hero.name} memberi ${d} damage.`;
+  }else{
+    B.streak=0;
+    if(B.shield){B.shield=false;B.msg='Firewall menahan serangan.'}
+    else{B.hp=Math.max(0,B.hp-B.e.atk);B.msg=(B.chosen<0?'Waktu habis. ':'Salah. ')+`${B.e.n} menyerang: -${B.e.atk} HP.`}
+  }
+  renderBattle();
+  setTimeout(()=>{
+    if(B!==b||B.over)return;
+    if(B.e.cur<=0)return advEnd(true);
+    if(B.hp<=0)return advEnd(false);
+    B.i++;nextQ();
+  },1500);
+}
+function advEnd(win){
+  B.over=true;stopTimer();
+  const i=B.stage,st=STAGES[i];
+  if(win){
+    const ratio=B.hp/B.maxHp,stars=ratio>=.7?3:ratio>=.4?2:1;
+    S.stars[i]=Math.max(S.stars[i],stars);
+    const xp=20+stars*10+(i===5?30:0);gainXp(xp);
+    const next=i<5;
+    showResult({tag:`DUNIA ${i+1} · ${st.name.toUpperCase()}`,win:true,title:i===5?'Raja Virus Tumbang':'Musuh Dikalahkan',stars,
+      sub:`${st.e.n} kalah. Sisa HP ${B.hp}/${B.maxHp}. Kamu mendapat ${xp} XP.`,
+      btns:(next?`<button class="btn" data-a="stage" data-i="${i+1}">Dunia Berikutnya</button>`:'')+`<button class="btn ghost" data-a="stage" data-i="${i}">Main Lagi</button><button class="btn ghost" data-a="toMap">Peta</button>`});
+  }else{
+    gainXp(5);
+    showResult({tag:`DUNIA ${i+1} · ${st.name.toUpperCase()}`,win:false,title:'Kamu Kalah',
+      sub:`${st.e.n} masih tersisa ${B.e.cur} HP. Kamu mendapat 5 XP. Coba lagi dengan strategi skill yang berbeda.`,
+      btns:`<button class="btn" data-a="stage" data-i="${i}">Coba Lagi</button><button class="btn ghost" data-a="toMap">Peta</button>`});
+  }
+}
+
+/* ---------- ARENA ---------- */
+function newArena(mode,match){
+  const hero=heroById(S.hero),r=rng(hashStr((R.code||'bot')+'|'+match));
+  const qs=shuffle(BANK,r).slice(0,10).map(q=>prep(q,r));
+  return{mode,match,i:0,hero,qs,hit:{},bonus:0,correct:0,streak:0,charge:0,x2:false,loop:0,
+    done:false,dead:false,over:false,locked:false,chosen:-1,target:null,hadOpp:false,
+    msg:'Serang lawan dengan jawaban benar.',tmax:15000,tleft:15000,myId:null};
+}
+const num=(v,m)=>Math.max(0,Math.min(m,Number(v)||0));
+function arenaPlayers(){
+  if(B.mode==='bot'){
+    return[{id:'me',n:S.name,h:B.hero.id,hit:B.hit,bonus:B.bonus,q:B.i,done:B.done,me:true},B.bot];
+  }
+  const list=R.room?R.room.peers():[];
+  const out=[];
+  for(const p of list){
+    if(p.kind!=='viewer')continue;
+    const pr=p.presence||{};
+    if(p.isMe){
+      if(!p.sameTab)continue;
+      B.myId=p.peer;
+      out.push({id:p.peer,n:S.name,h:B.hero.id,hit:B.hit,bonus:B.bonus,q:B.i,done:B.done,me:true});
+    }else if(pr.m===B.match&&pr.ph!=='lobby'){
+      const hit={};
+      if(pr.hit&&typeof pr.hit==='object')for(const k of Object.keys(pr.hit))hit[k]=num(pr.hit[k],250);
+      out.push({id:p.peer,n:String(pr.n||'Pemain').slice(0,14),h:String(pr.h||''),hit,bonus:num(pr.bonus,100),q:num(pr.q,10),done:!!pr.done,me:false});
+    }
+  }
+  return out;
+}
+function hpOf(p,ps){
+  const max=heroById(p.h).hp;
+  let inc=0;
+  for(const o of ps)if(o!==p)inc+=Number(o.hit[p.id])||0;
+  return Math.max(0,max+p.bonus-inc);
+}
+function dealt(p){return Object.values(p.hit).reduce((a,b)=>a+(Number(b)||0),0)}
+function sync(){
+  if(B&&B.mode==='room'&&R.room)R.room.presence({q:B.i,hit:B.hit,bonus:B.bonus,done:B.done}).catch(()=>{});
+}
+function ensureTarget(ps){
+  const opps=ps.filter(p=>!p.me&&hpOf(p,ps)>0);
+  if(!opps.length){B.target=null;return}
+  if(!opps.some(o=>o.id===B.target))B.target=opps.slice().sort((a,b)=>hpOf(a,ps)-hpOf(b,ps))[0].id;
+}
+function arenaResolve(ok){
+  const b=B;
+  if(ok){
+    B.streak++;B.charge=Math.min(3,B.charge+1);B.correct++;
+    const d=hitDmg(),t=B.target;
+    if(t){B.hit={...B.hit,[t]:(Number(B.hit[t])||0)+d};B.msg=`Benar. Serangan ${d} damage mengenai lawan.`}
+    else B.msg='Benar, tetapi tidak ada target tersisa.';
+  }else{B.streak=0;B.msg=B.chosen<0?'Waktu habis. Tidak ada serangan.':'Salah. Tidak ada serangan.'}
+  B.i++;
+  if(B.i>=B.qs.length)B.done=true;
+  sync();renderBattle();arenaCheck();
+  setTimeout(()=>{if(B!==b||B.over||B.done||B.dead)return;nextQ()},1200);
+}
+function arenaCheck(){
+  if(!B||B.mode==='adv'||B.over)return;
+  const ps=arenaPlayers(),me=ps.find(p=>p.me);
+  if(!me)return;
+  const opps=ps.filter(p=>!p.me);
+  if(opps.length)B.hadOpp=true;
+  if(!B.dead&&hpOf(me,ps)<=0){B.dead=true;B.done=true;stopTimer();sync()}
+  const alive=ps.filter(p=>hpOf(p,ps)>0);
+  const ended=(B.hadOpp&&!opps.length)||(ps.length>1&&(alive.length<=1||ps.every(p=>p.done||hpOf(p,ps)<=0)));
+  if(ended)return finishArena(ps);
+  renderBattle();
+}
+function finishArena(ps){
+  B.over=true;stopTimer();clearTimeout(B.botT);
+  const ranked=ps.map(p=>({p,hp:hpOf(p,ps),d:dealt(p)})).sort((a,b)=>b.hp-a.hp||b.d-a.d);
+  const myRank=ranked.findIndex(x=>x.p.me)+1;
+  const win=myRank===1&&ranked.length>1;
+  const xp=10+B.correct*2+(win?30:0);gainXp(xp);
+  const rows=`<div class="plist" style="width:100%;text-align:left">`+ranked.map((x,k)=>`<div class="pl"><span class="rank">${k+1}</span>${badge(heroById(x.p.h),34)}<b style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${esc(x.p.n)}${x.p.me?' (kamu)':''}</b><small style="font-family:var(--font-m)">${x.hp} HP · ${x.d} dmg</small></div>`).join('')+`</div>`;
+  const back=B.mode==='room'?`<button class="btn" data-a="backLobby">Kembali ke Ruang</button>`:`<button class="btn" data-a="startBot">Lawan Bot Lagi</button>`;
+  R.state='result';
+  showResult({tag:B.mode==='room'?`ARENA · RUANG ${esc(R.code)}`:'LATIHAN VS BOT',win,title:win?'Kamu Menang':`Peringkat ${myRank}`,
+    sub:`${B.correct} jawaban benar dari ${B.qs.length} soal. Kamu mendapat ${xp} XP.`,rows,
+    btns:back+`<button class="btn ghost" data-a="leaveToMenu">Menu</button>`});
+}
+function startBot(){
+  leaveRoomQuiet();
+  B=newArena('bot','bot'+Date.now());
+  B.myId='me';B.target='bot';
+  const hb=HEROES[Math.floor(Math.random()*HEROES.length)];
+  B.bot={id:'bot',n:BOTS[Math.floor(Math.random()*BOTS.length)],h:hb.id,hit:{},bonus:0,q:0,done:false,streak:0,acc:.6};
+  show('s-battle');nextQ();botLoop();
+}
+function botLoop(){
+  const b=B;
+  b.botT=setTimeout(()=>{
+    if(B!==b||b.over||b.bot.done)return;
+    const ps=arenaPlayers(),bot=b.bot;
+    if(hpOf(bot,ps)<=0){bot.done=true;arenaCheck();return}
+    bot.q++;
+    if(Math.random()<bot.acc){bot.streak++;bot.hit.me=(bot.hit.me||0)+heroById(bot.h).atk+Math.min(bot.streak,5)*2}
+    else bot.streak=0;
+    if(bot.q>=10)bot.done=true;
+    arenaCheck();
+    if(!bot.done)botLoop();
+  },5500+Math.random()*6500);
+}
+
+/* ---------- ROOMS ---------- */
+const CODE_CHARS='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const genCode=()=>Array.from({length:4},()=>CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]).join('');
+async function joinRoom(code){
+  if(!roomNs){toast('Mode online belum tersedia di tampilan ini.');return}
+  leaveRoomQuiet();
+  let room;
+  try{room=await roomNs.join('ia-'+code.toLowerCase())}catch(e){toast('Gagal masuk ruang. Coba lagi sebentar lagi.');return}
+  R.room=room;R.code=code;R.state='lobby';R.last=null;
+  room.presence({n:S.name,h:S.hero,ph:'lobby',m:null,hit:{},bonus:0,q:0,done:false}).catch(()=>{});
+  R.off=room.onPeers(onPeers,()=>{toast('Koneksi ruang terputus.')});
+  $('#lcode').textContent=code;
+  show('s-lobby');renderLobby();
+}
+function leaveRoomQuiet(){
+  if(B&&B.botT)clearTimeout(B.botT);
+  try{R.off&&R.off()}catch(e){}
+  try{R.room&&R.room.leave()}catch(e){}
+  R.room=null;R.off=null;R.state='idle';
+}
+function lobbyPlayers(){
+  const out=[];
+  for(const p of R.room.peers()){
+    if(p.kind!=='viewer')continue;
+    if(p.isMe&&!p.sameTab)continue;
+    const pr=p.presence||{};
+    if(!pr.n)continue;
+    out.push({peer:p.peer,me:p.isMe,n:String(pr.n).slice(0,14),h:String(pr.h||''),ph:pr.ph,m:pr.m,q:num(pr.q,10)});
+  }
+  return out;
+}
+function renderLobby(){
+  if(!R.room||R.state!=='lobby')return;
+  const ps=lobbyPlayers();
+  $('#lplayers').innerHTML=ps.map(p=>`<div class="pl">${badge(heroById(p.h),36)}<b style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${esc(p.n)}${p.me?' (kamu)':''}</b><small>${p.ph==='play'?'sedang bermain':'siap'}</small></div>`).join('')||'<small>Menghubungkan…</small>';
+  const inLobby=ps.filter(p=>p.ph==='lobby').sort((a,b)=>a.peer<b.peer?-1:1);
+  const host=inLobby[0],amHost=!!host&&host.me;
+  const running=ps.some(p=>!p.me&&p.ph==='play'&&p.m&&p.m!==R.last&&p.q>1);
+  $('#bhost').hidden=!(amHost&&inLobby.length>=2);
+  $('#lnote').textContent=running?'Pertandingan sedang berjalan. Tunggu ronde berikutnya.':inLobby.length<2?'Menunggu teman bergabung. Bagikan kode di atas.':amHost?'Semua siap. Tekan Mulai Pertandingan.':'Menunggu pembuat ruang memulai.';
+}
+function onPeers(){
+  if(!R.room)return;
+  if(R.state==='lobby'){
+    const ps=lobbyPlayers();
+    const g=ps.find(p=>!p.me&&p.ph==='play'&&p.m&&p.m!==R.last&&p.q<=1);
+    if(g)return startRoom(g.m);
+    renderLobby();
+  }else if(R.state==='play'){arenaCheck()}
+}
+function startRoom(match){
+  R.state='play';R.last=match;
+  B=newArena('room',match);
+  R.room.presence({ph:'play',m:match,q:0,hit:{},bonus:0,done:false}).catch(()=>{});
+  show('s-battle');nextQ();
+}
+
+/* ---------- BATTLE RENDER ---------- */
+function fighter(h,name,hp,max,sub){
+  return`<div class="fighter">${badge(h,48)}<div class="fi"><div class="fn"><b>${esc(name)}</b><span>${sub}</span></div>${bar(hp,max,'')}<small style="font-family:var(--font-m)">${hp}/${max} HP</small></div></div>`;
+}
+function arenaHead(){
+  const ps=arenaPlayers(),me=ps.find(p=>p.me);
+  if(!me)return'<div class="card note">Menghubungkan…</div>';
+  ensureTarget(ps);
+  const opps=ps.filter(p=>!p.me);
+  const myhp=hpOf(me,ps);
+  const oc=opps.map(o=>{
+    const hp=hpOf(o,ps),h=heroById(o.h),max=h.hp+o.bonus;
+    return`<button class="opp ${B.target===o.id?'targeted':''} ${hp<=0?'out':''}" data-a="target" data-id="${esc(o.id)}" ${hp<=0?'disabled':''}><div class="fighter">${badge(h,40)}<div class="fi"><div class="fn"><b>${esc(o.n)}</b><span>soal ${Math.min(o.q,10)}/10</span></div>${bar(hp,Math.max(max,1),'red')}<small style="font-family:var(--font-m)">${hp>0?hp+' HP':'tumbang'}${B.target===o.id?' · target':''}</small></div></div></button>`;
+  }).join('');
+  return`<div class="arena-head"><div class="card">${fighter(B.hero,S.name,myhp,B.hero.hp+B.bonus,'Kamu · soal '+Math.min(B.i+1,10)+'/10')}</div><div class="opps">${oc||'<div class="card note">Menunggu lawan…</div>'}</div></div>`;
+}
+function renderBattle(){
+  const el=$('#battle');
+  if(!B){el.innerHTML='';return}
+  let head;
+  if(B.mode==='adv'){
+    head=`<div class="card duel">${fighter(B.hero,S.name,B.hp,B.maxHp,'Kamu')}<div class="vs">VS</div><div class="fighter"><span class="badge sq" style="--c:${B.e.c};--s:48px">${esc(B.e.g)}</span><div class="fi"><div class="fn"><b>${B.e.n}</b><span>ATK ${B.e.atk}</span></div>${bar(B.e.cur,B.e.max,'red')}<small style="font-family:var(--font-m)">${B.e.cur}/${B.e.max} HP</small></div></div></div>`;
+  }else head=arenaHead();
+  let q;
+  if(B.dead)q='<div class="card note">Kamu tumbang. Tonton sisa pertandingan sampai selesai.</div>';
+  else if(B.done&&B.mode!=='adv')q='<div class="card note">Semua soal selesai. Menunggu pemain lain…</div>';
+  else if(B.q){
+    q=`<div class="card qcard"><div class="qmeta"><span>${B.postFight?`SOAL PEMENANGAN · ${Math.min((B.postFightCorrect||0)+1,B.postFightTotal)}/${B.postFightTotal}`:esc(TOPICS[B.q.topic])}</span><span id="tsec"></span></div><div class="timer"><i id="tbar"></i></div><h2 class="q">${esc(B.q.t)}</h2><div class="opts">${B.q.opts.map((o,k)=>{
+      let c='';
+      if(o.gone)c='gone';else if(B.locked)c=o.ok?'ok':(k===B.chosen?'bad':'');
+      return`<button class="opt ${c}" data-a="opt" data-i="${k}" ${B.locked||o.gone?'disabled':''}><b>${'ABCD'[k]}</b><span>${esc(o.txt)}</span></button>`;
+    }).join('')}</div></div>`;
+  }else q='';
+  const can=B.charge>=3&&!B.locked&&!B.done&&!B.dead;
+  const foot=`<div class="bfoot"><button class="skill" data-a="skill" ${can?'':'disabled'}><div><b>${B.hero.sk}</b><small>${B.charge>=3?'Siap dipakai':'Isi dengan jawaban benar'}</small></div><div class="pips">${[0,1,2].map(k=>`<i class="${k<B.charge?'on':''}"></i>`).join('')}</div></button>
+    <div class="msg">${esc(B.msg||'')}${B.streak>1?`<br><span class="streak">Runtun ${B.streak}× · bonus damage</span>`:''}</div>
+    <button class="btn ghost" data-a="quit">${B.quit?'Yakin keluar?':'Keluar'}</button></div>`;
+  el.innerHTML=head+q+foot;
+  timerUI();
+}
+
+
+/* ---------- 2D ACTION ADVENTURE ---------- */
+let EX=null, worldRAF=0, worldKeys={};
+const WORLD_NAMES=['Hutan Perangkat','Gua Biner','Kota Algoritma','Pelabuhan Jaringan','Benteng Keamanan','Istana Kode'];
+function startExplore(i){
+  const st=STAGES[i],h=heroById(S.hero);
+  EX={stage:i,x:110,y:420,dir:1,frame:0,step:0,enemyX:790,enemyY:420,
+      hp:h.hp,maxHp:h.hp,enemyHp:st.e.hp*4,enemyMax:st.e.hp*4,combat:false,
+      attackCd:0,enemyCd:0,invuln:0,flash:0,dead:false,enemyHits:0,ultimate:0,ultimateWarn:0,enemyLunge:0,skillCd:0,skillFlash:0,skillName:'',shield:0,combo:0};
+  worldKeys={};
+  $('#worldTitle').textContent=st.name;
+  $('#worldStage').textContent='DUNIA '+(i+1)+' / 6';
+  updateWorldHud();
+  $('#worldGoal').textContent='Kalahkan '+st.e.n;$('#worldBossSkill').textContent='☠ JURUS BOSS: SETIAP 4 SERANGAN';
+  $('#exploreHint').textContent='Jelajahi area, dekati monster, lalu tekan SERANG atau SPACE untuk menyerang.';
+  show('s-explore');cancelAnimationFrame(worldRAF);drawWorld();
+}
+function updateWorldHud(){
+  if(!EX)return;
+  $('#worldHp').textContent=EX.hp;
+  const hpPct=Math.max(0,EX.hp/EX.maxHp*100);
+  $('#worldHp').style.color=hpPct<30?'#ff6578':'#eaf4e6';
+  const ep=$('#worldEnemyHp');if(ep)ep.textContent=EX.enemyHp;
+  const eb=$('#worldEnemyBar');if(eb)eb.style.width=Math.max(0,EX.enemyHp/EX.enemyMax*100)+'%';
+  const sb=$('#worldSkillBtn');if(sb){const ready=EX.skillCd<=0;sb.disabled=!ready;sb.innerHTML=`✨ ${heroById(S.hero).sk} <small>${ready?'SIAP (E)':Math.ceil(EX.skillCd/60)+' dtk'}</small>`;}
+}
+function drawHero(ctx,x,y,dir,frame,hero,attacking=false,damage=false){
+  const bob=Math.sin(frame*.22)*2,leg=Math.sin(frame*.32)*5;
+  const id=hero.id,metal=id==='dara'?'#f0b84f':id==='bita'?'#b9a0ff':id==='neta'?'#8cf2bd':id==='algo'?'#ff7388':id==='sandi'?'#ff9de1':'#72eaff';
+  const dark=id==='dara'?'#49351f':id==='bita'?'#302653':id==='neta'?'#174b3b':id==='algo'?'#541d31':id==='sandi'?'#54264c':'#123b50';
+  ctx.save();ctx.translate(x,y+bob);if(dir<0)ctx.scale(-1,1);
+  ctx.fillStyle='#08130d99';ctx.beginPath();ctx.ellipse(0,4,25,8,0,0,Math.PI*2);ctx.fill();
+  // silhouette kaki dan armor sesuai kelas hero
+  ctx.fillStyle=dark;ctx.fillRect(-13,-25+leg,11,24);ctx.fillRect(3,-25-leg,11,24);
+  ctx.fillStyle=metal;ctx.fillRect(-15,-5+leg,15,6);ctx.fillRect(2,-5-leg,15,6);
+  ctx.fillStyle=damage?'#ff6476':hero.c;ctx.beginPath();
+  if(id==='dara'){ctx.moveTo(-23,-57);ctx.lineTo(23,-57);ctx.lineTo(27,-28);ctx.lineTo(0,-17);ctx.lineTo(-27,-28);}
+  else if(id==='algo'){ctx.moveTo(-13,-58);ctx.lineTo(15,-58);ctx.lineTo(19,-26);ctx.lineTo(0,-19);ctx.lineTo(-19,-26);}
+  else if(id==='bita'){ctx.moveTo(-19,-58);ctx.lineTo(19,-58);ctx.lineTo(15,-23);ctx.lineTo(0,-18);ctx.lineTo(-15,-23);}
+  else{ctx.moveTo(-18,-56);ctx.lineTo(18,-56);ctx.lineTo(21,-26);ctx.lineTo(0,-18);ctx.lineTo(-21,-26);}
+  ctx.closePath();ctx.fill();
+  ctx.fillStyle=dark;ctx.fillRect(-8,-51,16,25);ctx.fillStyle=metal;ctx.fillRect(-5,-48,10,19);
+  // bahu dan tangan
+  ctx.fillStyle=metal;ctx.fillRect(-27,-53,12,13);ctx.fillRect(15,-53,12,13);
+  ctx.fillStyle='#e9bd98';ctx.beginPath();ctx.arc(0,-70,15,0,Math.PI*2);ctx.fill();
+  // rambut / helm / mahkota yang membedakan hero
+  ctx.fillStyle=dark;ctx.beginPath();ctx.arc(0,-76,16,Math.PI,Math.PI*2);ctx.lineTo(15,-69);ctx.lineTo(-15,-69);ctx.fill();
+  if(id==='dara'){ctx.fillStyle=metal;ctx.beginPath();ctx.moveTo(-17,-78);ctx.lineTo(-13,-94);ctx.lineTo(-4,-82);ctx.lineTo(2,-98);ctx.lineTo(8,-82);ctx.lineTo(17,-92);ctx.lineTo(16,-76);ctx.closePath();ctx.fill();}
+  else if(id==='bita'){ctx.strokeStyle=metal;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-13,-82);ctx.lineTo(-23,-101);ctx.moveTo(13,-82);ctx.lineTo(23,-101);ctx.stroke();ctx.fillStyle=metal;ctx.beginPath();ctx.arc(0,-99,5,0,Math.PI*2);ctx.fill();}
+  else if(id==='neta'){ctx.fillStyle=metal;ctx.beginPath();ctx.arc(0,-83,18,Math.PI,Math.PI*2);ctx.fill();ctx.fillRect(-17,-83,34,5);}
+  else if(id==='algo'){ctx.fillStyle=metal;ctx.beginPath();ctx.moveTo(-16,-78);ctx.lineTo(0,-91);ctx.lineTo(16,-78);ctx.lineTo(10,-72);ctx.lineTo(-10,-72);ctx.fill();}
+  else if(id==='sandi'){ctx.fillStyle=metal;ctx.beginPath();ctx.moveTo(-16,-80);ctx.lineTo(-26,-92);ctx.lineTo(-10,-87);ctx.lineTo(0,-97);ctx.lineTo(10,-87);ctx.lineTo(26,-92);ctx.lineTo(16,-80);ctx.fill();}
+  else{ctx.fillStyle=metal;ctx.fillRect(-13,-82,26,5);ctx.fillRect(-4,-91,8,12);}
+  ctx.fillStyle='#17212c';ctx.fillRect(5,-70,3,3);
+  // senjata unik tiap karakter
+  ctx.save();ctx.translate(23,-42);ctx.rotate(attacking?-.95:-.28);
+  ctx.strokeStyle=dark;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,8);ctx.lineTo(0,25);ctx.stroke();
+  ctx.strokeStyle=metal;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-7,8);ctx.lineTo(7,8);ctx.stroke();
+  ctx.fillStyle=metal;ctx.strokeStyle=metal;ctx.lineWidth=2;
+  if(id==='kodra'){ctx.beginPath();ctx.moveTo(0,7);ctx.lineTo(-6,-34);ctx.lineTo(0,-46);ctx.lineTo(6,-34);ctx.closePath();ctx.fill();}
+  else if(id==='bita'){ctx.beginPath();ctx.moveTo(0,7);ctx.lineTo(-4,-25);ctx.lineTo(0,-39);ctx.lineTo(4,-25);ctx.closePath();ctx.fill();ctx.beginPath();ctx.arc(0,-40,7,0,Math.PI*2);ctx.fill();}
+  else if(id==='neta'){ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,6);ctx.lineTo(0,-35);ctx.stroke();ctx.beginPath();ctx.arc(0,-39,7,0,Math.PI*2);ctx.stroke();}
+  else if(id==='dara'){ctx.beginPath();ctx.moveTo(0,7);ctx.lineTo(-13,-17);ctx.lineTo(-9,-36);ctx.lineTo(0,-43);ctx.lineTo(9,-36);ctx.lineTo(13,-17);ctx.closePath();ctx.fill();}
+  else if(id==='algo'){ctx.beginPath();ctx.moveTo(0,7);ctx.lineTo(-3,-35);ctx.lineTo(0,-48);ctx.lineTo(3,-35);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(-3,-25);ctx.lineTo(-14,-33);ctx.stroke();}
+  else{ctx.beginPath();ctx.moveTo(0,7);ctx.lineTo(-5,-29);ctx.lineTo(0,-42);ctx.lineTo(5,-29);ctx.closePath();ctx.fill();ctx.beginPath();ctx.arc(0,-31,9,0,Math.PI*2);ctx.stroke();}
+  ctx.restore();
+  if(attacking){ctx.strokeStyle=metal;ctx.lineWidth=6;ctx.shadowColor=metal;ctx.shadowBlur=18;ctx.beginPath();ctx.arc(30,-43,38,-1.25,.7);ctx.stroke();ctx.shadowBlur=0;}
+  ctx.restore();
+}
+function drawMonster(ctx,x,y,frame,stage,attacking=false,flash=false,face=1,ultimate=false){
+  // Monster horor: tubuh tinggi kurus, tanduk patah, mata menyala, rahang dan cakar.
+  const pulse=1+Math.sin(frame*.24)*.045;
+  ctx.save();ctx.translate(x,y+Math.sin(frame*.17)*4);ctx.rotate(face===-1?-0.16:0.16);ctx.scale(face,1);ctx.scale(pulse,1/pulse);
+  ctx.shadowColor=ultimate?'#ff003c':'#ff173d';ctx.shadowBlur=ultimate?48:(attacking?34:20);
+  ctx.fillStyle='#05040b99';ctx.beginPath();ctx.ellipse(0,7,54,13,0,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+  const variant=STAGES.indexOf(stage);
+  const monsterColors=['#a62f46','#777b91','#176e83','#176b59','#78602d','#752044'];
+  const bodyColor=flash?'#fff':monsterColors[Math.max(0,variant)];
+  // Siluet unik tiap dunia: serangga, golem, bayangan, kraken, pemburu berjubah, raja virus.
+  if(variant===0){ctx.fillStyle='#5a2037';ctx.beginPath();ctx.ellipse(-38,-86,27,13,-.5,0,Math.PI*2);ctx.ellipse(38,-86,27,13,.5,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#d84b62';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-45,-85);ctx.lineTo(-68,-112);ctx.moveTo(45,-85);ctx.lineTo(68,-112);ctx.stroke();}
+  if(variant===1){ctx.fillStyle='#777b91';ctx.beginPath();ctx.moveTo(-31,-91);ctx.lineTo(-42,-117);ctx.lineTo(-20,-108);ctx.lineTo(0,-132);ctx.lineTo(20,-108);ctx.lineTo(42,-117);ctx.lineTo(31,-91);ctx.fill();}
+  if(variant===2){ctx.strokeStyle='#24617a';ctx.lineWidth=12;ctx.lineCap='round';for(let q=-1;q<=1;q++){ctx.beginPath();ctx.moveTo(q*17,-38);ctx.bezierCurveTo(q*55,-8,q*62,-65,q*82,-38);ctx.stroke();}}
+  if(variant===3){ctx.strokeStyle='#187d76';ctx.lineWidth=11;ctx.lineCap='round';for(let q=0;q<4;q++){ctx.beginPath();ctx.moveTo(-24+q*16,-36);ctx.bezierCurveTo(-65+q*25,0,-85+q*35,-20,-95+q*40,-5);ctx.stroke();}}
+  if(variant===4){ctx.fillStyle='#342b20';ctx.beginPath();ctx.moveTo(-35,-91);ctx.lineTo(-28,-151);ctx.lineTo(0,-171);ctx.lineTo(28,-151);ctx.lineTo(35,-91);ctx.closePath();ctx.fill();ctx.strokeStyle='#d2a84c';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-20,-140);ctx.lineTo(-10,-158);ctx.lineTo(0,-143);ctx.lineTo(12,-164);ctx.lineTo(22,-140);ctx.stroke();}
+  if(variant===5){ctx.strokeStyle='#d52c67';ctx.lineWidth=8;ctx.beginPath();for(let q=-2;q<=2;q++){ctx.moveTo(q*10,-96);ctx.lineTo(q*16,-139-Math.abs(q)*3);}ctx.stroke();ctx.shadowColor='#ff174d';ctx.shadowBlur=25;ctx.fillStyle='#ff174d';ctx.beginPath();ctx.arc(0,-120,5,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;}
+  // kaki panjang dan cakar
+  ctx.strokeStyle=flash?'#fff':'#17101c';ctx.lineWidth=15;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(-17,-32);ctx.lineTo(-26,-5);ctx.lineTo(-39,1);ctx.moveTo(17,-32);ctx.lineTo(28,-7);ctx.lineTo(42,0);ctx.stroke();
+  ctx.strokeStyle='#9c253b';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-39,1);ctx.lineTo(-49,8);ctx.moveTo(42,0);ctx.lineTo(52,7);ctx.stroke();
+  // lengan kurus menjuntai
+  ctx.strokeStyle=flash?'#fff':'#211421';ctx.lineWidth=13;ctx.beginPath();ctx.moveTo(-23,-67);ctx.lineTo(-45,-43);ctx.lineTo(-55,-19);ctx.moveTo(23,-67);ctx.lineTo(45,-43);ctx.lineTo(55,-18);ctx.stroke();
+  // jari cakar
+  ctx.strokeStyle='#b53b4d';ctx.lineWidth=4;ctx.beginPath();for(const side of [-1,1]){let xx=side*55;ctx.moveTo(xx,-19);ctx.lineTo(xx+side*9,-7);ctx.moveTo(xx,-19);ctx.lineTo(xx+side*2,-4);ctx.moveTo(xx,-19);ctx.lineTo(xx-side*7,-8);}ctx.stroke();
+  // badan kurus dan rusuk
+  ctx.fillStyle=bodyColor;ctx.beginPath();ctx.moveTo(-27,-91);ctx.quadraticCurveTo(-43,-66,-25,-39);ctx.lineTo(-12,-25);ctx.lineTo(0,-34);ctx.lineTo(13,-25);ctx.lineTo(26,-43);ctx.quadraticCurveTo(40,-72,26,-91);ctx.quadraticCurveTo(0,-111,-27,-91);ctx.fill();
+  ctx.strokeStyle='#642033';ctx.lineWidth=3;for(let k=0;k<4;k++){ctx.beginPath();ctx.moveTo(-18+k*3,-73+k*9);ctx.quadraticCurveTo(0,-64+k*9,18-k*3,-73+k*9);ctx.stroke();}
+  // kepala tengkorak
+  ctx.fillStyle=flash?'#fff':(variant===1?'#969bad':variant===3?'#174d4d':variant===4?'#403324':variant===5?'#50132f':'#30212c');ctx.beginPath();ctx.moveTo(-25,-91);ctx.lineTo(-22,-121);ctx.quadraticCurveTo(0,-143,23,-121);ctx.lineTo(27,-91);ctx.lineTo(15,-77);ctx.lineTo(-15,-77);ctx.closePath();ctx.fill();
+  // tanduk bengkok
+  ctx.strokeStyle=flash?'#fff':'#b7a3a0';ctx.lineWidth=8;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-17,-119);ctx.quadraticCurveTo(-34,-137,-31,-157);ctx.quadraticCurveTo(-17,-145,-12,-132);ctx.moveTo(17,-119);ctx.quadraticCurveTo(35,-140,31,-158);ctx.quadraticCurveTo(17,-145,12,-132);ctx.stroke();
+  // mata merah dan pupil hitam
+  ctx.shadowColor='#ff092f';ctx.shadowBlur=24;ctx.fillStyle='#ff183f';ctx.beginPath();ctx.ellipse(-10,-111,7,4,-.25,0,Math.PI*2);ctx.ellipse(10,-111,7,4,.25,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+  ctx.fillStyle='#08040a';ctx.beginPath();ctx.arc(-10,-111,2,0,Math.PI*2);ctx.arc(10,-111,2,0,Math.PI*2);ctx.fill();
+  // mulut terbuka dengan gigi tajam
+  ctx.fillStyle='#08040a';ctx.beginPath();ctx.moveTo(-15,-96);ctx.quadraticCurveTo(0,-84,15,-96);ctx.lineTo(11,-83);ctx.quadraticCurveTo(0,-77,-11,-83);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#eee1d5';ctx.beginPath();for(let j=0;j<5;j++){let xx=-12+j*6;ctx.moveTo(xx,-94);ctx.lineTo(xx+3,-86);ctx.lineTo(xx+5,-94);}ctx.fill();
+  ctx.fillStyle='#8f1d35';ctx.fillRect(-3,-82,6,4);
+  if(attacking){ctx.shadowColor='#ff1d43';ctx.shadowBlur=30;ctx.strokeStyle='#ff334f';ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,-62,75,-.55,1.15);ctx.stroke();ctx.shadowBlur=0;}
+  if(ultimate){ctx.globalAlpha=.72;ctx.strokeStyle='#ff163e';ctx.lineWidth=12;ctx.shadowColor='#ff002e';ctx.shadowBlur=45;ctx.beginPath();ctx.arc(0,-70,105,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;ctx.fillStyle='#ff2748';ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('ULTIMATE!',0,-184);ctx.shadowBlur=0;}
+  ctx.restore();
+}
+function drawWorld(){
+  if(!EX)return;
+  const c=$('#worldCanvas'),ctx=c.getContext('2d'),w=c.width,h=c.height,st=STAGES[EX.stage],t=EX.frame++;
+  tickWorld();
+  const sky=ctx.createLinearGradient(0,0,0,h);sky.addColorStop(0,'#080914');sky.addColorStop(.55,'#211526');sky.addColorStop(1,'#17201d');ctx.fillStyle=sky;ctx.fillRect(0,0,w,h);
+  ctx.fillStyle='#d6d3e8';ctx.shadowColor='#9b8cff';ctx.shadowBlur=34;ctx.beginPath();ctx.arc(790,95,34,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+  ctx.fillStyle='#ffffff18';ctx.beginPath();ctx.arc(790,95,54,0,Math.PI*2);ctx.fill();
+  for(let j=0;j<7;j++){let x=j*180-((t*.35)%180);ctx.fillStyle=j%2?'#25253b':'#191d30';ctx.beginPath();ctx.moveTo(x,300);ctx.lineTo(x+95,130+(j%3)*35);ctx.lineTo(x+190,300);ctx.fill();}
+  for(let j=0;j<12;j++){let x=(j*100-(t*.7)%100);ctx.fillStyle=j%2?'#171d22':'#10171d';ctx.fillRect(x+35,180,14,210);ctx.beginPath();ctx.arc(x+42,190,53,0,Math.PI*2);ctx.fill();}
+  ctx.fillStyle='#17241e';ctx.fillRect(0,340,w,200);ctx.fillStyle='#26352a';ctx.fillRect(0,340,w,12);
+  ctx.fillStyle='#514653';ctx.beginPath();ctx.moveTo(0,430);ctx.bezierCurveTo(240,360,330,510,520,430);ctx.bezierCurveTo(700,350,820,460,960,390);ctx.lineTo(960,520);ctx.lineTo(0,520);ctx.fill();
+  for(let j=0;j<45;j++){let x=(j*83+17)%960,y=355+(j*47)%155;ctx.strokeStyle='#66745c';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-4,y-9);ctx.moveTo(x,y);ctx.lineTo(x+5,y-7);ctx.stroke();}
+  for(let j=0;j<12;j++){let x=(j*137+80)%950,y=390+(j*23)%120;ctx.fillStyle='#55515a';ctx.beginPath();ctx.ellipse(x,y,8,4,.2,0,Math.PI*2);ctx.fill();}
+  ctx.fillStyle='#e6e3c8';ctx.fillRect(865,270,5,110);ctx.fillStyle='#e75b55';ctx.beginPath();ctx.moveTo(870,272);ctx.lineTo(925,288);ctx.lineTo(870,305);ctx.fill();
+  // Monster health bar above the enemy
+  drawMonster(ctx,EX.enemyX,EX.enemyY-(EX.enemyLunge>0?EX.enemyLunge*1.2:0),t,st,EX.enemyCd>25,EX.flash>0,EX.x<EX.enemyX?-1:1,EX.ultimate>0);
+  ctx.fillStyle='#100812';ctx.fillRect(EX.enemyX-62,EX.enemyY-174,124,13);ctx.fillStyle='#ff5368';ctx.fillRect(EX.enemyX-60,EX.enemyY-172,120*Math.max(0,EX.enemyHp/EX.enemyMax),9);ctx.strokeStyle='#ffb4c1';ctx.lineWidth=1;ctx.strokeRect(EX.enemyX-62,EX.enemyY-174,124,13);
+  ctx.fillStyle='#fff';ctx.font='bold 15px sans-serif';ctx.textAlign='center';ctx.fillText(st.e.n,EX.enemyX,EX.enemyY-184);
+  drawHero(ctx,EX.x,EX.y,EX.dir,t,heroById(S.hero),EX.attackCd>20||EX.skillFlash>0,EX.invuln>0);
+  if(EX.skillFlash>0){ctx.save();const col=heroById(S.hero).c;ctx.globalAlpha=Math.min(.85,EX.skillFlash/22);ctx.strokeStyle=col;ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=30;ctx.lineWidth=8;ctx.beginPath();ctx.arc(EX.x,EX.y-45,35+(22-EX.skillFlash)*4,0,Math.PI*2);ctx.stroke();ctx.font='bold 20px sans-serif';ctx.textAlign='center';ctx.fillText(EX.skillName,EX.x,EX.y-125);ctx.restore();}
+  if(EX.shield>0){ctx.save();ctx.strokeStyle='#64dfff';ctx.shadowColor='#64dfff';ctx.shadowBlur=22;ctx.lineWidth=5;ctx.beginPath();ctx.arc(EX.x,EX.y-45,43,0,Math.PI*2);ctx.stroke();ctx.restore();}
+  ctx.fillStyle='#fff';ctx.font='bold 13px sans-serif';ctx.fillText(S.name,EX.x,EX.y-95);
+  const vg=ctx.createRadialGradient(w/2,h/2,150,w/2,h/2,620);vg.addColorStop(0,'transparent');vg.addColorStop(1,'#0a1a1780');ctx.fillStyle=vg;ctx.fillRect(0,0,w,h);
+  worldRAF=requestAnimationFrame(drawWorld);
+}
+function tickWorld(){
+  if(!EX||EX.dead)return;
+  const speed=3.2;
+  let dx=0,dy=0;
+  if(worldKeys.left)dx--;if(worldKeys.right)dx++;if(worldKeys.up)dy--;if(worldKeys.down)dy++;
+  if(dx||dy){const n=Math.hypot(dx,dy);EX.x=Math.max(30,Math.min(925,EX.x+dx/n*speed));EX.y=Math.max(350,Math.min(505,EX.y+dy/n*speed));if(dx)EX.dir=dx>0?1:-1;}
+  if(EX.attackCd>0)EX.attackCd--;if(EX.enemyCd>0)EX.enemyCd--;if(EX.invuln>0)EX.invuln--;if(EX.flash>0)EX.flash--;if(EX.skillCd>0)EX.skillCd--;if(EX.skillFlash>0)EX.skillFlash--;if(EX.shield>0)EX.shield--;
+  if(EX.enemyLunge>0)EX.enemyLunge--;if(EX.ultimate>0)EX.ultimate--;if(EX.ultimateWarn>0)EX.ultimateWarn--;
+  let dist=Math.hypot(EX.enemyX-EX.x,EX.enemyY-EX.y);
+  if(dist<310&&!EX.combat){EX.combat=true;$('#exploreHint').textContent='PERTARUNGAN! Monster memburumu. Serang dan hindari jurus pamungkasnya!';}
+  if(EX.combat){
+    if(dist>58){const huntSpeed=2.55;EX.enemyX+=(EX.x-EX.enemyX)/dist*huntSpeed;EX.enemyY+=(EX.y-EX.enemyY)/dist*huntSpeed;}
+    dist=Math.hypot(EX.enemyX-EX.x,EX.enemyY-EX.y);
+    if(EX.enemyCd<=0){
+      EX.enemyHits++;
+      const ultimate=EX.enemyHits%4===0;
+      const reach=ultimate?155:88;
+      if(dist<reach&&EX.invuln<=0){
+        const base=STAGES[EX.stage].e.atk;let dmg=ultimate?base*2:base;if(EX.shield>0){dmg=Math.max(1,Math.round(dmg*.2));EX.shield=0;}
+        EX.hp=Math.max(0,EX.hp-dmg);EX.enemyCd=ultimate?68:34;EX.invuln=ultimate?30:22;EX.enemyLunge=ultimate?20:12;EX.ultimate=ultimate?24:0;updateWorldHud();
+        $('#exploreHint').textContent=ultimate?`☠ ULTIMATE ${STAGES[EX.stage].e.n}! -${dmg} HP!`:`${STAGES[EX.stage].e.n} menerjang! -${dmg} HP.`;if(ultimate)$('#worldBossSkill').textContent='☠ ULTIMATE DILEPASKAN!';else $('#worldBossSkill').textContent='☠ JURUS BOSS: '+(4-(EX.enemyHits%4))+' SERANGAN LAGI';
+        if(EX.hp<=0)return worldPlayerDead();
+      }else{EX.enemyCd=ultimate?54:22;}
+    }
+  }
+  updateWorldHud();
+}
+function moveWorld(dir){if(!EX||EX.dead)return;worldKeys[dir]=true;}
+function attackWorld(){
+  if(!EX||EX.dead||!EX.combat||EX.attackCd>0)return;
+  const dist=Math.hypot(EX.enemyX-EX.x,EX.enemyY-EX.y);
+  if(dist>105){$('#exploreHint').textContent='Terlalu jauh! Dekati monster untuk menyerang.';return;}
+  const hero=heroById(S.hero),dmg=hero.atk+Math.floor(Math.random()*5)+2;
+  EX.enemyHp=Math.max(0,EX.enemyHp-dmg);EX.attackCd=12;EX.flash=15;updateWorldHud();
+  $('#exploreHint').textContent=`Serangan berhasil! ${dmg} damage ke ${STAGES[EX.stage].e.n}.`;
+  if(EX.enemyHp<=0){
+    const i=EX.stage,remainingHp=EX.hp;EX.dead=true;stopExplore();
+    $('#exploreHint').textContent='Monster tumbang! Jawab 5 soal. Jawaban benar memulihkan HP.';
+    startPostFightQuiz(i,remainingHp);
+  }
+}
+function startPostFightQuiz(i,remainingHp){
+  startAdv(i);
+  if(Number.isFinite(remainingHp)){B.hp=Math.max(1,Math.min(B.maxHp,remainingHp));}
+  B.postFight=true;B.postFightTotal=5;B.postFightCorrect=0;B.e.cur=1;B.e.max=1;B.msg='Monster tumbang! Jawab 5 soal Informatika. Jawaban salah mengurangi HP.';
+  renderBattle();
+}
+function worldSkill(){
+  if(!EX||EX.dead||!EX.combat)return;
+  if(EX.skillCd>0){$('#exploreHint').textContent='Jurus masih cooldown '+Math.ceil(EX.skillCd/60)+' detik.';return;}
+  const h=heroById(S.hero),dist=Math.hypot(EX.enemyX-EX.x,EX.enemyY-EX.y);
+  let damage=0,message='';
+  EX.skillCd=480;EX.skillFlash=22;EX.skillName=h.sk;
+  if(h.id==='kodra'){
+    if(dist>145){EX.skillCd=0;$('#exploreHint').textContent='Debug Slash perlu jarak dekat!';return;}
+    damage=Math.round(h.atk*3.2);EX.flash=24;message=`DEBUG SLASH! Tebasan kuat memberi ${damage} damage.`;
+  }else if(h.id==='bita'){
+    damage=Math.round(h.atk*2.8);EX.flash=26;message=`KONVERSI BINER! Ledakan energi memberi ${damage} damage.`;
+  }else if(h.id==='neta'){
+    const heal=Math.min(EX.maxHp-EX.hp,Math.round(EX.maxHp*.35));EX.hp+=heal;
+    damage=Math.round(h.atk*1.15);EX.flash=20;message=`RESTORE BACKUP! Pulih ${heal} HP dan memberi ${damage} damage.`;
+  }else if(h.id==='dara'){
+    EX.shield=360;damage=Math.round(h.atk*2.0);EX.flash=22;message=`FIREWALL! Perisai aktif 6 detik, damage ${damage}. Serangan musuh berikutnya berkurang 80%.`;
+  }else if(h.id==='algo'){
+    damage=Math.round(h.atk*3.6);EX.combo=3;EX.flash=28;message=`LOOP COMBO! Tiga tebasan beruntun memberi ${damage} damage.`;
+  }else if(h.id==='sandi'){
+    damage=Math.round(h.atk*2.7);EX.flash=24;message=`ENKRIPSI PELURU! Serangan jarak jauh menembus pertahanan: ${damage} damage.`;
+  }
+  if(h.id!=='sandi'&&dist>155){EX.skillCd=0;EX.skillFlash=0;$('#exploreHint').textContent='Dekati monster untuk menggunakan jurus ini!';return;}
+  EX.enemyHp=Math.max(0,EX.enemyHp-damage);updateWorldHud();$('#exploreHint').textContent=message;
+  if(EX.enemyHp<=0){const i=EX.stage,remainingHp=EX.hp;EX.dead=true;stopExplore();startPostFightQuiz(i,remainingHp);}
+}
+function worldPlayerDead(){
+  if(!EX)return;
+  const i=EX.stage,st=STAGES[i];EX.dead=true;stopExplore();
+  showResult({tag:`DUNIA ${i+1} · ${st.name.toUpperCase()}`,win:false,title:'Kamu Gugur!',
+    sub:`${st.e.n} mengalahkanmu. HP kamu habis sebelum monster tumbang. Dunia ini belum berhasil ditaklukkan.`,
+    btns:`<button class="btn" data-a="stage" data-i="${i}">Coba Lagi</button><button class="btn ghost" data-a="toMap">Peta Dunia</button>`});
+}
+function stopExplore(){cancelAnimationFrame(worldRAF);EX=null;worldKeys={};}
+window.addEventListener('keydown',e=>{
+  if($('#s-explore').hidden||!EX)return;
+  const map={ArrowLeft:'left',a:'left',ArrowRight:'right',d:'right',ArrowUp:'up',w:'up',ArrowDown:'down',s:'down'};
+  const dir=map[e.key];if(dir){e.preventDefault();worldKeys[dir]=true;}
+  if(e.code==='Space'||e.key===' '){e.preventDefault();attackWorld();}if(e.key.toLowerCase()==='e'){e.preventDefault();worldSkill();}
+});
+window.addEventListener('keyup',e=>{
+  const map={ArrowLeft:'left',a:'left',ArrowRight:'right',d:'right',ArrowUp:'up',w:'up',ArrowDown:'down',s:'down'};
+  if(map[e.key])worldKeys[map[e.key]]=false;
+});
+document.querySelectorAll('[data-move]').forEach(btn=>{
+  const dir=btn.dataset.move;
+  btn.addEventListener('pointerdown',e=>{e.preventDefault();btn.setPointerCapture(e.pointerId);worldKeys[dir]=true;});
+  const release=()=>{worldKeys[dir]=false;};
+  btn.addEventListener('pointerup',release);btn.addEventListener('pointercancel',release);btn.addEventListener('lostpointercapture',release);
+});
+/* ---------- EVENTS ---------- */
+const A={
+  start(){
+    const v=$('#nick').value.trim().slice(0,14);
+    if(!v){toast('Isi nama pemain dulu.');$('#nick').focus();return}
+    S.name=v;persist();
+    if(S.hero){renderMenu();show('s-menu')}else{renderHeroes();show('s-heroes')}
+  },
+  pick(el){S.pick=el.dataset.id;renderHeroes()},
+  confirmHero(){S.hero=S.pick;persist();renderMenu();show('s-menu')},
+  toMenuIfHero(){renderMenu();show('s-menu')},
+  changeHero(){renderHeroes();show('s-heroes')},
+  home(){$('#nick').value=S.name;show('s-home')},
+  toMenu(){stopExplore();leaveRoomQuiet();renderMenu();show('s-menu')},
+  toMap(){stopExplore();renderMap();show('s-map')},
+  toArena(){$('#roomnote').hidden=!!roomNs;$('#bcreate').disabled=!roomNs;$('#bjoin').disabled=!roomNs;show('s-arena')},
+  stage(el){startExplore(+el.dataset.i)},
+  attackWorld(){attackWorld()},
+  worldSkill(){worldSkill()},
+  exitExplore(){stopExplore();renderMap();show('s-map')},
+  createRoom(){joinRoom(genCode())},
+  joinRoom(){
+    const c=$('#joincode').value.trim().toUpperCase();
+    if(!/^[A-Z0-9]{4}$/.test(c)){toast('Kode terdiri dari 4 huruf atau angka.');return}
+    joinRoom(c);
+  },
+  copyCode(){
+    try{navigator.clipboard.writeText(R.code).then(()=>toast('Kode disalin.'),()=>toast('Salin manual: '+R.code))}
+    catch(e){toast('Salin manual: '+R.code)}
+  },
+  hostStart(){
+    if(R.state!=='lobby')return;
+    startRoom(Math.random().toString(36).slice(2,8));
+  },
+  leaveRoom(){leaveRoomQuiet();$('#roomnote').hidden=!!roomNs;show('s-arena')},
+  startBot(){startBot()},
+  backLobby(){
+    if(!R.room){A.toArena();return}
+    R.state='lobby';
+    R.room.presence({ph:'lobby',m:null,hit:{},bonus:0,q:0,done:false}).catch(()=>{});
+    show('s-lobby');renderLobby();
+  },
+  leaveToMenu(){leaveRoomQuiet();B=null;renderMenu();show('s-menu')},
+  opt(el){answer(+el.dataset.i)},
+  skill(){useSkill()},
+  target(el){if(B&&B.mode!=='adv'){B.target=el.dataset.id;renderBattle()}},
+  quit(){
+    if(!B)return;
+    if(!B.quit){B.quit=true;renderBattle();return}
+    stopTimer();const adv=B.mode==='adv';
+    if(B.botT)clearTimeout(B.botT);B.over=true;
+    if(adv){B=null;renderMap();show('s-map')}
+    else{
+      if(B.mode==='room'&&R.room){
+        B=null;R.state='lobby';
+        R.room.presence({ph:'lobby',m:null,hit:{},bonus:0,q:0,done:true}).catch(()=>{});
+        R.room.presence({done:false}).catch(()=>{});
+        show('s-lobby');renderLobby();
+      }else{B=null;A.toArena()}
+    }
+  }
+};
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-a]');
+  if(!el||el.disabled)return;
+  const f=A[el.dataset.a];if(f)f(el);
+});
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'){if(e.key==='Enter'){if(e.target.id==='nick')A.start();if(e.target.id==='joincode')A.joinRoom()}return}
+  if($('#s-battle').hidden||!B)return;
+  const k='1234'.indexOf(e.key);
+  if(k>=0)answer(k);
+});
+
+/* ---------- BOOT ---------- */
+$('#nick').value=S.name||'';
+header();
+try{
+  const u=window.claude&&window.claude.use?window.claude.use('room'):null;
+  if(u)u.then(r=>{roomNs=r;if(!$('#s-arena').hidden)A.toArena()}).catch(()=>{});
+}catch(e){}
+})();
+</script>
+
+</body></html>
